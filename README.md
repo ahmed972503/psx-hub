@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PSX Intelligence
 
-## Getting Started
+Private, approval-based desk for Pakistan Stock Exchange news and corporate events.
 
-First, run the development server:
+Phase 1 is the working spine: access control, one public RSS collector, manual intake, a rules-and-exposure impact engine, the intelligence feed, corporate calendar, dividends, results, watchlist, in-app alerts, and admin review.
+
+The current limits are deliberate:
+
+- Automatic collection is Dawn Business RSS only. Anything else is pasted by an admin, with the original URL.
+- Invitation and password-reset email is sent only after SMTP values are set in `.env`. Until then, the admin copies the invitation link.
+- Impact analysis stays on rules and the exposure map. No generative model is called.
+
+Prices, volume, and the KSE-100 are not shown. They stay behind a market-data provider slot until a licensed feed is connected.
+
+## Run
+
+1. Start Docker Desktop.
+2. From this folder:
 
 ```bash
+docker compose up -d
+npm install
+npx prisma generate
+npx prisma db push
+npm run db:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Open http://localhost:3000 and log in with the admin account in `.env`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The seeded admin is `admin@psx.local` / `PSX-Admin-2026!` unless you change `.env` before seeding. Change that password before any shared deployment.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Email
 
-## Learn More
+Use a Gmail account with 2-Step Verification turned on, then create an App Password at https://myaccount.google.com/apppasswords. Put these values in `.env` and restart the app:
 
-To learn more about Next.js, take a look at the following resources:
+```
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT="587"
+SMTP_SECURE="false"
+SMTP_USER="you@gmail.com"
+SMTP_PASSWORD="the-16-character-app-password"
+SMTP_FROM="PSX Intelligence <you@gmail.com>"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Check it with `npm run mail:test`. The normal Gmail password will be rejected.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## What is intentionally not faked
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- No share prices, index levels, or volumes.
+- No expected EPS or analyst targets.
+- No dividend rate unless the source text states one.
+- No full article text. The collector keeps the headline, link, time, and a short feed excerpt.
+- HTML, official, and sitemap sources are stored as configuration. Automatic collection runs only for RSS.

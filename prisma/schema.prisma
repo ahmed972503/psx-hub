@@ -1,0 +1,571 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  ANALYST
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum AccessStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum SourceType {
+  RSS
+  HTML
+  OFFICIAL
+  API
+  SITEMAP
+  MANUAL
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSED
+  FAILED
+  SKIPPED
+}
+
+enum Relevance {
+  HIGH
+  RELEVANT
+  POTENTIAL
+  LOW
+  IRRELEVANT
+}
+
+enum Direction {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+  MIXED
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFORMATIONAL
+}
+
+enum Verification {
+  OFFICIAL
+  CONFIRMED
+  MULTIPLE_SOURCES
+  SINGLE_SOURCE
+  UNVERIFIED
+}
+
+enum ReviewStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AlertChannel {
+  IN_APP
+  EMAIL
+  PUSH
+  TELEGRAM
+}
+
+enum AlertStatus {
+  PENDING_REVIEW
+  DELIVERED
+  SKIPPED
+  FAILED
+  REJECTED
+}
+
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  name            String
+  username        String?    @unique
+  phone           String?
+  passwordHash    String?
+  role            Role       @default(USER)
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  country         String?
+  investorType    String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  sessions         Session[]
+  loginActivity    LoginActivity[]
+  preference       UserPreference?
+  watchlist        WatchlistItem[]
+  alerts           Alert[]
+  reviews          AlertReview[]    @relation("Reviewer")
+  auditLogs        AuditLog[]       @relation("Actor")
+  invitations      Invitation[]
+  passwordResets   PasswordReset[]
+  reviewedRequests AccessRequest[]  @relation("Reviewer")
+
+  @@map("users")
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  userAgent  String?
+  ip         String?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model LoginActivity {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email     String
+  success   Boolean
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@map("login_activity")
+}
+
+model AccessRequest {
+  id                String       @id @default(cuid())
+  name              String
+  email             String
+  phone             String?
+  requestedUsername String?
+  reason            String
+  investorType      String
+  country           String
+  message           String?
+  status            AccessStatus @default(PENDING)
+  adminNote         String?
+  requestedAt       DateTime     @default(now())
+  reviewedAt        DateTime?
+  reviewedById      String?
+  reviewedBy        User?        @relation("Reviewer", fields: [reviewedById], references: [id])
+
+  @@index([status, requestedAt])
+  @@map("access_requests")
+}
+
+model Invitation {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("invitations")
+}
+
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("password_resets")
+}
+
+model UserPreference {
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language            String   @default("en")
+  alertSensitivity    String   @default("medium")
+  favoriteSectorSlugs String[]
+  eventTypes          String[]
+  channels            String[] @default(["IN_APP"])
+  quietStart          String?
+  quietEnd            String?
+
+  @@map("user_preferences")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation("Actor", fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Sector {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  summary   String
+  companies Company[]
+  impacts   SectorImpact[]
+
+  @@map("sectors")
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  ticker      String   @unique
+  name        String
+  aliases     String[]
+  sectorId    String
+  sector      Sector   @relation(fields: [sectorId], references: [id])
+  description String?
+  exposures   Exposure[]
+  impacts     StockImpact[]
+  events      CorporateEvent[]
+  dividends   Dividend[]
+  results     FinancialResult[]
+  watchers    WatchlistItem[]
+
+  @@index([sectorId])
+  @@map("companies")
+}
+
+model Exposure {
+  id          String  @id @default(cuid())
+  companyId   String
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  factor      String
+  sensitivity String
+  weight      Int
+  note        String
+
+  @@unique([companyId, factor])
+  @@map("exposures")
+}
+
+model Source {
+  id              String     @id @default(cuid())
+  name            String
+  type            SourceType
+  url             String?
+  category        String
+  language        String     @default("en")
+  reliability     Int        @default(60)
+  pollIntervalSec Int        @default(900)
+  enabled         Boolean    @default(false)
+  notes           String?
+  lastSuccessAt   DateTime?
+  lastFailureAt   DateTime?
+  lastError       String?
+  lastItemAt      DateTime?
+  articleCount    Int        @default(0)
+  errorCount      Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  rawNews         RawNews[]
+  logs            SourceLog[]
+
+  @@map("sources")
+}
+
+model SourceLog {
+  id        String   @id @default(cuid())
+  sourceId  String
+  source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  ok        Boolean
+  message   String
+  latencyMs Int?
+  itemCount Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([sourceId, createdAt])
+  @@map("source_logs")
+}
+
+model NewsCluster {
+  id                String             @id @default(cuid())
+  canonicalHeadline String
+  firstPublishedAt  DateTime?
+  latestUpdateAt    DateTime?
+  sourceCount       Int                @default(1)
+  createdAt         DateTime           @default(now())
+  rawNews           RawNews[]
+  item              IntelligenceItem?
+
+  @@map("news_clusters")
+}
+
+model RawNews {
+  id               String           @id @default(cuid())
+  sourceId         String
+  source           Source           @relation(fields: [sourceId], references: [id])
+  sourceUrl        String           @unique
+  headline         String
+  publishedAt      DateTime?
+  fetchedAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  excerpt          String?
+  language         String
+  contentHash      String
+  processingStatus ProcessingStatus @default(PENDING)
+  clusterId        String?
+  cluster          NewsCluster?     @relation(fields: [clusterId], references: [id])
+
+  @@index([contentHash])
+  @@index([publishedAt])
+  @@map("raw_news")
+}
+
+model IntelligenceItem {
+  id              String        @id @default(cuid())
+  clusterId       String        @unique
+  cluster         NewsCluster   @relation(fields: [clusterId], references: [id])
+  headline        String
+  summary         String
+  fact            String
+  interpretation  String
+  possibleImpact  String
+  simpleEn        String
+  simpleUr        String
+  simpleRoman     String
+  relevance       Relevance
+  relevanceScore  Int
+  eventType       String
+  direction       Direction
+  impactScore     Int
+  confidence      Int
+  confidenceLabel String
+  timeHorizon     String
+  relationship    String
+  reasoning       String
+  risks           Json
+  figures         Json
+  shouldAlert     Boolean
+  priority        Priority
+  verification    Verification
+  reviewStatus    ReviewStatus  @default(NOT_REQUIRED)
+  visible         Boolean
+  language        String
+  primaryUrl      String
+  primarySource   String
+  publishedAt     DateTime?
+  ingestedAt      DateTime
+  processedAt     DateTime      @default(now())
+  stockImpacts    StockImpact[]
+  sectorImpacts   SectorImpact[]
+  events          CorporateEvent[]
+  alerts          Alert[]
+  review          AlertReview?
+
+  @@index([visible, publishedAt])
+  @@index([priority, processedAt])
+  @@map("intelligence_items")
+}
+
+model StockImpact {
+  id           String           @id @default(cuid())
+  itemId       String
+  item         IntelligenceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  companyId    String
+  company      Company          @relation(fields: [companyId], references: [id])
+  direction    Direction
+  strength     Int
+  confidence   Int
+  relationship String
+  horizon      String
+  reason       String
+
+  @@unique([itemId, companyId])
+  @@index([companyId])
+  @@map("stock_impacts")
+}
+
+model SectorImpact {
+  id        String           @id @default(cuid())
+  itemId    String
+  item      IntelligenceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  sectorId  String
+  sector    Sector           @relation(fields: [sectorId], references: [id])
+  direction Direction
+  reason    String
+
+  @@unique([itemId, sectorId])
+  @@map("sector_impacts")
+}
+
+model CorporateEvent {
+  id                String           @id @default(cuid())
+  itemId            String?
+  item              IntelligenceItem? @relation(fields: [itemId], references: [id])
+  companyId         String?
+  company           Company?         @relation(fields: [companyId], references: [id])
+  eventType         String
+  title             String
+  announcementTime  DateTime?
+  eventDate         DateTime?
+  effectiveDate     DateTime?
+  recordDate        DateTime?
+  bookClosureStart  DateTime?
+  bookClosureEnd    DateTime?
+  paymentDate       DateTime?
+  meetingDate       DateTime?
+  resultPeriod      String?
+  importance        String
+  uncertain         Boolean          @default(false)
+  extractedData     Json
+  sourceUrl         String?
+  sourceName        String?
+  createdAt         DateTime         @default(now())
+  dividend          Dividend?
+  result            FinancialResult?
+
+  @@index([eventDate])
+  @@index([meetingDate])
+  @@index([companyId])
+  @@map("corporate_events")
+}
+
+model Dividend {
+  id                String         @id @default(cuid())
+  eventId           String?        @unique
+  event             CorporateEvent? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  companyId         String
+  company           Company        @relation(fields: [companyId], references: [id])
+  percent           Decimal?       @db.Decimal(8, 2)
+  perShare          Decimal?       @db.Decimal(12, 4)
+  announcementDate  DateTime?
+  bookClosureStart  DateTime?
+  bookClosureEnd    DateTime?
+  exDividendDate    DateTime?
+  paymentDate       DateTime?
+  uncertain         Boolean        @default(true)
+  notes             String?
+  sourceUrl         String?
+  createdAt         DateTime       @default(now())
+
+  @@index([companyId])
+  @@map("dividends")
+}
+
+model FinancialResult {
+  id          String          @id @default(cuid())
+  eventId     String?         @unique
+  event       CorporateEvent? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  companyId   String
+  company     Company         @relation(fields: [companyId], references: [id])
+  periodLabel String?
+  figures     Json
+  summary     String
+  uncertain   Boolean         @default(true)
+  sourceUrl   String?
+  publishedAt DateTime?
+  createdAt   DateTime        @default(now())
+
+  @@index([companyId])
+  @@map("financial_results")
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
+  @@map("watchlist_items")
+}
+
+model AlertReview {
+  id           String           @id @default(cuid())
+  itemId       String           @unique
+  item         IntelligenceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  status       ReviewStatus     @default(PENDING)
+  note         String?
+  reviewerId   String?
+  reviewer     User?            @relation("Reviewer", fields: [reviewerId], references: [id])
+  createdAt    DateTime         @default(now())
+  reviewedAt   DateTime?
+
+  @@map("alert_reviews")
+}
+
+model Alert {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId      String
+  item        IntelligenceItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  channel     AlertChannel
+  priority    Priority
+  status      AlertStatus
+  title       String
+  body        String
+  createdAt   DateTime         @default(now())
+  deliveredAt DateTime?
+  readAt      DateTime?
+
+  @@index([userId, createdAt])
+  @@map("alerts")
+}
+
+model AiLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  question  String
+  answer    String
+  citations Json
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("ai_logs")
+}
+
+model PlatformSetting {
+  id                         Int      @id @default(1)
+  requireReviewForHighAlerts Boolean  @default(true)
+  relevanceThreshold         Int      @default(40)
+  alertImpactThreshold       Int      @default(60)
+  updatedAt                  DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+model MarketDataProvider {
+  id      String  @id @default(cuid())
+  name    String
+  kind    String
+  enabled Boolean @default(false)
+  notes   String
+
+  @@map("market_data_providers")
+}

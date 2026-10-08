@@ -1,26 +1,189 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-ink: #071018;
+  --color-panel: #101820;
+  --color-panel-2: #172230;
+  --color-line: #2a3b50;
+  --color-muted: #8ea0b5;
+  --color-paper: #e8eef6;
+  --color-gold: #e0b15a;
+  --color-up: #3dce8e;
+  --color-down: #ff5c73;
+  --color-mix: #e0b15a;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--color-ink);
+  color: var(--color-paper);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(224, 177, 90, 0.09), transparent 55%),
+    radial-gradient(700px 380px at 100% 0%, rgba(61, 206, 142, 0.05), transparent 50%),
+    var(--color-ink);
+  min-height: 100%;
 }
+
+::selection {
+  background: rgba(224, 177, 90, 0.35);
+  color: #fff;
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2 {
+  letter-spacing: -0.025em;
+}
+
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    background: #0b121a;
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+    color: var(--color-paper);
+    padding: 0.75rem 0.85rem;
+    width: 100%;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: #a8843d;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(224, 177, 90, 0.16);
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 1.05rem;
+    height: 1.05rem;
+    padding: 0;
+    accent-color: var(--color-gold);
+    flex-shrink: 0;
+  }
+}
+
+button {
+  cursor: pointer;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.72rem 1.05rem;
+  font-weight: 600;
+  line-height: 1.1;
+  flex-shrink: 0;
+  text-decoration: none;
+  transition: background 140ms ease, border-color 140ms ease, filter 140ms ease;
+}
+
+.btn:hover {
+  filter: brightness(1.06);
+}
+
+.btn-gold {
+  background: var(--color-gold);
+  color: #1a1305;
+}
+
+.btn-ghost {
+  border: 1px solid var(--color-line);
+  background: rgba(16, 24, 32, 0.55);
+  color: var(--color-paper);
+}
+
+.btn-ghost:hover {
+  background: var(--color-panel-2);
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 40%), var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+}
+
+.kicker {
+  color: var(--color-gold);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  background: #0c141d;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.pill-positive {
+  color: var(--color-up);
+  border-color: rgba(61, 206, 142, 0.35);
+  background: rgba(61, 206, 142, 0.08);
+}
+
+.pill-negative {
+  color: var(--color-down);
+  border-color: rgba(255, 92, 115, 0.35);
+  background: rgba(255, 92, 115, 0.08);
+}
+
+.pill-mixed {
+  color: var(--color-mix);
+  border-color: rgba(224, 177, 90, 0.35);
+  background: rgba(224, 177, 90, 0.08);
+}
+
+.pill-neutral {
+  color: var(--color-muted);
+}
+
+.meter {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #0c141d;
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-muted);
+}
+
+.meter-positive { background: var(--color-up); }
+.meter-negative { background: var(--color-down); }
+.meter-mixed { background: var(--color-mix); }
+
+.empty {
+  border: 1px dashed var(--color-line);
+  border-radius: 16px;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  padding: 1.1rem 1rem;
+}
+
+.up { color: var(--color-up); }
+.down { color: var(--color-down); }
+.mix { color: var(--color-mix); }
+.neutral { color: var(--color-muted); }
